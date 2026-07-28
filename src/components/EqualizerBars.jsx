@@ -9,7 +9,7 @@ function EqualizerBars({ isPlaying = false, barCount = 9 }) {
           className={`w-[3px] rounded-sm ${isPlaying ? 'animate-eq' : ''}`}
           style={{
             height: isPlaying ? undefined : '4px',
-            background: 'linear-gradient(to top, #4ADE80, #FBBF24 60%, #F87171)',
+            background: 'linear-gradient(to top, #7A1F1F, #E8483B 55%, #FF3B3B)',
             animationDelay: `${i * 0.12}s`,
           }}
         />
