@@ -1,0 +1,86 @@
+import { Play, Pause, SkipBack, SkipForward, Volume2 } from 'lucide-react'
+import EqualizerBars from './EqualizerBars'
+
+function formatTime(seconds) {
+  if (!seconds || isNaN(seconds)) return '0:00'
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+function PlayerBar({ player }) {
+  const { currentTrack, isPlaying, currentTime, duration, volume, togglePlay, seek, changeVolume, next, prev } = player
+
+  if (!currentTrack) {
+    return (
+      <div className="relative h-20 metal-panel-raised border-t border-black/60 flex items-center px-5">
+        <p className="font-lcd text-taupe text-lg tracking-wide">// SELECT A TRACK</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative h-20 metal-panel-raised border-t border-black/60 flex items-center gap-6 px-5">
+      {/* Track info */}
+      <div className="flex items-center gap-3 w-56 flex-shrink-0">
+        <img src={currentTrack.cover} alt="" className="w-12 h-12 rounded object-cover border border-black/40" />
+        <div className="flex flex-col min-w-0">
+          <span className="font-lcd text-phosphor text-lg leading-none truncate [text-shadow:0_0_6px_rgba(107,255,143,0.5)]">
+            {currentTrack.title}
+          </span>
+          <span className="text-xs text-taupe truncate">{currentTrack.artist}</span>
+        </div>
+      </div>
+
+      {/* Controls + seek */}
+      <div className="flex flex-col flex-1 gap-1.5 max-w-xl">
+        <div className="flex items-center justify-center gap-4">
+          <button onClick={prev} className="text-taupe hover:text-paper transition-colors">
+            <SkipBack size={18} fill="currentColor" />
+          </button>
+          <button
+            onClick={togglePlay}
+            className="w-8 h-8 rounded-full bg-phosphor text-void flex items-center justify-center hover:scale-105 transition-transform shadow-[0_0_10px_rgba(107,255,143,0.5)]"
+          >
+            {isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" className="ml-0.5" />}
+          </button>
+          <button onClick={next} className="text-taupe hover:text-paper transition-colors">
+            <SkipForward size={18} fill="currentColor" />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 font-lcd text-sm text-taupe">
+          <span className="w-9 text-right">{formatTime(currentTime)}</span>
+          <input
+            type="range"
+            min={0}
+            max={duration || 0}
+            value={currentTime}
+            onChange={(e) => seek(Number(e.target.value))}
+            className="flex-1 h-1 accent-phosphor cursor-pointer"
+          />
+          <span className="w-9">{formatTime(duration)}</span>
+        </div>
+      </div>
+
+      {/* EQ + volume */}
+      <div className="flex items-center gap-4 flex-shrink-0">
+        <EqualizerBars isPlaying={isPlaying} barCount={9} />
+        <div className="flex items-center gap-1.5">
+          <Volume2 size={16} className="text-taupe" />
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume}
+            onChange={(e) => changeVolume(Number(e.target.value))}
+            className="w-16 h-1 accent-phosphor cursor-pointer"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default PlayerBar
