@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { tracks as staticTracks } from './data/tracks'
 import TrackList from './components/TrackList'
 import PlayerBar from './components/PlayerBar'
-import Hero from './components/Hero'
+import Turntable from './components/Turntable'
 import RecordCrate from './components/RecordCrate'
 import PowerSwitch from './components/PowerSwitch'
 import UploadButton from './components/UploadButton'
@@ -10,21 +10,28 @@ import SearchBar from './components/SearchBar'
 import QueuePanel from './components/QueuePanel'
 import NowPlayingView from './components/NowPlayingView'
 import { usePlayerStore } from './store/usePlayerStore'
-import { Plus } from 'lucide-react'
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { Plus, Heart } from 'lucide-react'
 
 function Bolt({ className }) {
   return <span className={`absolute w-1.5 h-1.5 rounded-full bg-black/40 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)] ${className}`} />
 }
 
 function App() {
+  useKeyboardShortcuts()
+
   const [uploadedTracks, setUploadedTracks] = useState([])
   const allTracks = [...staticTracks, ...uploadedTracks]
 
   const setLibrary = usePlayerStore((s) => s.setLibrary)
   const playTrack = usePlayerStore((s) => s.playTrack)
+  const togglePlay = usePlayerStore((s) => s.togglePlay)
   const currentTrack = usePlayerStore((s) => s.currentTrack)
+  const isPlaying = usePlayerStore((s) => s.isPlaying)
   const playlists = usePlayerStore((s) => s.playlists)
   const createPlaylist = usePlayerStore((s) => s.createPlaylist)
+  const likedTrackIds = usePlayerStore((s) => s.likedTrackIds)
+  const recentlyPlayed = usePlayerStore((s) => s.recentlyPlayed)
 
   useEffect(() => {
     setLibrary(allTracks)
@@ -33,19 +40,29 @@ function App() {
   const [isOn, setIsOn] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [activePlaylistId, setActivePlaylistId] = useState(null)
+  const [showLiked, setShowLiked] = useState(false)
   const [isQueueOpen, setIsQueueOpen] = useState(false)
   const [isNowPlayingOpen, setIsNowPlayingOpen] = useState(false)
-
-  const featuredTrack = staticTracks[0]
 
   function togglePower() {
     if (isOn && usePlayerStore.getState().isPlaying) usePlayerStore.getState().togglePlay()
     setIsOn(!isOn)
   }
 
+  function goHome() {
+    setShowLiked(false)
+    setActivePlaylistId(null)
+    setSearchTerm('')
+  }
+
   function handleNewPlaylist() {
     const name = window.prompt('Name your playlist:')
     if (name && name.trim()) createPlaylist(name.trim())
+  }
+
+  function handleTurntableToggle() {
+    if (!currentTrack) return
+    togglePlay()
   }
 
   const searchResults = searchTerm
@@ -54,6 +71,7 @@ function App() {
 
   const activePlaylist = playlists.find((p) => p.id === activePlaylistId)
   const activePlaylistTracks = activePlaylist ? allTracks.filter((t) => activePlaylist.trackIds.includes(t.id)) : []
+  const likedSongsList = allTracks.filter((t) => likedTrackIds.includes(t.id))
 
   return (
     <div className="h-screen flex flex-col bg-void text-paper font-body relative">
@@ -74,13 +92,27 @@ function App() {
 
           <PowerSwitch isOn={isOn} onToggle={togglePower} />
 
-          <button
-            onClick={() => { setActivePlaylistId(null); setSearchTerm('') }}
-            className="flex items-center gap-2 text-taupe hover:text-paper transition-colors py-1.5 text-left text-sm"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-taupe" />
-            Home
-          </button>
+          <div className="flex flex-col gap-1">
+            <button
+              onClick={goHome}
+              className={`flex items-center gap-2 transition-colors py-1.5 text-left text-sm ${
+                !showLiked && !activePlaylistId && !searchTerm ? 'text-phosphor' : 'text-taupe hover:text-paper'
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-current" />
+              Home
+            </button>
+
+            <button
+              onClick={() => { setShowLiked(true); setActivePlaylistId(null); setSearchTerm('') }}
+              className={`flex items-center gap-2 transition-colors py-1.5 text-left text-sm ${
+                showLiked ? 'text-phosphor' : 'text-taupe hover:text-paper'
+              }`}
+            >
+              <Heart size={14} fill={showLiked ? 'currentColor' : 'none'} />
+              Liked Songs
+            </button>
+          </div>
 
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -94,8 +126,10 @@ function App() {
               {playlists.map((p) => (
                 <button
                   key={p.id}
-                  onClick={() => { setActivePlaylistId(p.id); setSearchTerm('') }}
-                  className={`text-left text-sm py-1 truncate transition-colors ${activePlaylistId === p.id ? 'text-phosphor' : 'text-taupe hover:text-paper'}`}
+                  onClick={() => { setActivePlaylistId(p.id); setSearchTerm(''); setShowLiked(false) }}
+                  className={`text-left text-sm py-1 truncate transition-colors ${
+                    activePlaylistId === p.id ? 'text-phosphor' : 'text-taupe hover:text-paper'
+                  }`}
                 >
                   {p.name}
                 </button>
@@ -115,7 +149,10 @@ function App() {
             </div>
           )}
 
-          <SearchBar value={searchTerm} onChange={(v) => { setSearchTerm(v); setActivePlaylistId(null) }} />
+          <SearchBar
+            value={searchTerm}
+            onChange={(v) => { setSearchTerm(v); setActivePlaylistId(null); setShowLiked(false) }}
+          />
 
           {searchTerm ? (
             <>
@@ -123,6 +160,13 @@ function App() {
               {searchResults.length === 0
                 ? <p className="font-lcd text-taupe tracking-wide">// NO MATCHES FOUND</p>
                 : <TrackList tracks={searchResults} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />}
+            </>
+          ) : showLiked ? (
+            <>
+              <h3 className="font-display font-bold text-xl mb-4">Liked Songs</h3>
+              {likedSongsList.length === 0
+                ? <p className="font-lcd text-taupe tracking-wide">// NO LIKED TRACKS YET</p>
+                : <TrackList tracks={likedSongsList} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />}
             </>
           ) : activePlaylist ? (
             <>
@@ -133,8 +177,18 @@ function App() {
             </>
           ) : (
             <>
-              <Hero track={featuredTrack} onPlay={playTrack} />
+              <Turntable track={currentTrack} isPlaying={isPlaying} onTogglePlay={handleTurntableToggle} />
+
+              {recentlyPlayed.length > 0 && (
+                <>
+                  <h3 className="font-display font-bold text-xl mb-4">Recently Played</h3>
+                  <TrackList tracks={recentlyPlayed} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />
+                  <div className="h-8" />
+                </>
+              )}
+
               <RecordCrate tracks={staticTracks} onPlay={playTrack} />
+
               {uploadedTracks.length > 0 && (
                 <>
                   <h3 className="font-display font-bold text-xl mb-4">Your Library</h3>
@@ -142,6 +196,7 @@ function App() {
                   <div className="h-8" />
                 </>
               )}
+
               <h3 className="font-display font-bold text-xl mb-4">All Tracks</h3>
               <TrackList tracks={staticTracks} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />
             </>

@@ -12,6 +12,10 @@ export const usePlayerStore = create((set, get) => ({
   volume: 0.8,
   queue: [],
   playlists: [],
+  likedTrackIds: [],
+  shuffle: false,
+  repeatMode: 'off', // 'off' | 'all' | 'one'
+  recentlyPlayed: [],
 
   setLibrary: (library) => set({ library }),
 
@@ -24,7 +28,12 @@ export const usePlayerStore = create((set, get) => ({
     }
     audio.src = track.src
     audio.play()
-    set({ currentTrack: track, isPlaying: true, currentTime: 0 })
+    set((s) => ({
+      currentTrack: track,
+      isPlaying: true,
+      currentTime: 0,
+      recentlyPlayed: [track, ...s.recentlyPlayed.filter((t) => t.id !== track.id)].slice(0, 12),
+    }))
   },
 
   togglePlay: () => {
@@ -52,15 +61,36 @@ export const usePlayerStore = create((set, get) => ({
   },
 
   next: () => {
-    const { queue, currentTrack, library } = get()
+    const { queue, currentTrack, library, shuffle, repeatMode } = get()
+
+    if (repeatMode === 'one') {
+      if (audio) { audio.currentTime = 0; audio.play() }
+      return
+    }
+
     if (queue.length > 0) {
       const [nextTrack, ...rest] = queue
       set({ queue: rest })
       get().playTrack(nextTrack)
       return
     }
+
     if (!currentTrack || library.length === 0) return
+
+    if (shuffle) {
+      const options = library.filter((t) => t.id !== currentTrack.id)
+      const pick = options[Math.floor(Math.random() * options.length)] || currentTrack
+      get().playTrack(pick)
+      return
+    }
+
     const idx = library.findIndex((t) => t.id === currentTrack.id)
+    const isLast = idx === library.length - 1
+    if (isLast && repeatMode !== 'all') {
+      if (audio) audio.pause()
+      set({ isPlaying: false })
+      return
+    }
     get().playTrack(library[(idx + 1) % library.length])
   },
 
@@ -72,10 +102,7 @@ export const usePlayerStore = create((set, get) => ({
   },
 
   addToQueue: (track) => set((s) => ({ queue: [...s.queue, track] })),
-
-  removeFromQueue: (index) =>
-    set((s) => ({ queue: s.queue.filter((_, i) => i !== index) })),
-
+  removeFromQueue: (index) => set((s) => ({ queue: s.queue.filter((_, i) => i !== index) })),
   moveInQueue: (index, direction) =>
     set((s) => {
       const q = [...s.queue]
@@ -87,14 +114,24 @@ export const usePlayerStore = create((set, get) => ({
 
   createPlaylist: (name) =>
     set((s) => ({ playlists: [...s.playlists, { id: crypto.randomUUID(), name, trackIds: [] }] })),
-
   addTrackToPlaylist: (playlistId, trackId) =>
     set((s) => ({
       playlists: s.playlists.map((p) =>
-        p.id === playlistId && !p.trackIds.includes(trackId)
-          ? { ...p, trackIds: [...p.trackIds, trackId] }
-          : p
+        p.id === playlistId && !p.trackIds.includes(trackId) ? { ...p, trackIds: [...p.trackIds, trackId] } : p
       ),
+    })),
+
+  toggleLike: (trackId) =>
+    set((s) => ({
+      likedTrackIds: s.likedTrackIds.includes(trackId)
+        ? s.likedTrackIds.filter((id) => id !== trackId)
+        : [...s.likedTrackIds, trackId],
+    })),
+
+  toggleShuffle: () => set((s) => ({ shuffle: !s.shuffle })),
+  cycleRepeat: () =>
+    set((s) => ({
+      repeatMode: s.repeatMode === 'off' ? 'all' : s.repeatMode === 'all' ? 'one' : 'off',
     })),
 }))
 

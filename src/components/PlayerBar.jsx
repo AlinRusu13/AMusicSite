@@ -1,4 +1,4 @@
-import { Play, Pause, SkipBack, SkipForward, Volume2, Maximize2, ListMusic } from 'lucide-react'
+import { Play, Pause, SkipBack, SkipForward, Volume2, Maximize2, ListMusic, Shuffle, Repeat, Repeat1 } from 'lucide-react'
 import { usePlayerStore } from '../store/usePlayerStore'
 import EqualizerBars from './EqualizerBars'
 
@@ -10,7 +10,22 @@ function formatTime(seconds) {
 }
 
 function PlayerBar({ onExpand, onToggleQueue }) {
-  const { currentTrack, isPlaying, currentTime, duration, volume, togglePlay, seek, changeVolume, next, prev } = usePlayerStore()
+  const {
+    currentTrack,
+    isPlaying,
+    currentTime,
+    duration,
+    volume,
+    shuffle,
+    repeatMode,
+    togglePlay,
+    seek,
+    changeVolume,
+    next,
+    prev,
+    toggleShuffle,
+    cycleRepeat,
+  } = usePlayerStore()
 
   if (!currentTrack) {
     return (
@@ -35,6 +50,9 @@ function PlayerBar({ onExpand, onToggleQueue }) {
 
       <div className="flex flex-col flex-1 gap-1.5 max-w-xl">
         <div className="flex items-center justify-center gap-4">
+          <button onClick={toggleShuffle} className={shuffle ? 'text-phosphor' : 'text-taupe hover:text-paper'}>
+            <Shuffle size={16} />
+          </button>
           <button onClick={prev} className="text-taupe hover:text-paper transition-colors">
             <SkipBack size={18} fill="currentColor" />
           </button>
@@ -46,6 +64,9 @@ function PlayerBar({ onExpand, onToggleQueue }) {
           </button>
           <button onClick={next} className="text-taupe hover:text-paper transition-colors">
             <SkipForward size={18} fill="currentColor" />
+          </button>
+          <button onClick={cycleRepeat} className={repeatMode !== 'off' ? 'text-phosphor' : 'text-taupe hover:text-paper'}>
+            {repeatMode === 'one' ? <Repeat1 size={16} /> : <Repeat size={16} />}
           </button>
         </div>
 

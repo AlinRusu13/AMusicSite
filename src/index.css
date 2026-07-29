@@ -30,6 +30,14 @@ body {
   animation: eq 0.9s ease-in-out infinite;
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.vinyl-spin {
+  animation: spin 2.2s linear infinite;
+}
+
 /* Brushed metal texture for panels */
 .metal-panel {
   background-color: var(--color-panel);
@@ -88,7 +96,6 @@ body {
   );
 }
 
-/* Thin custom scrollbar to match the theme */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -109,7 +116,7 @@ body {
   box-shadow: inset 0 3px 12px rgba(0,0,0,0.5), inset 0 -2px 4px rgba(0,0,0,0.4);
 }
 
-/* Vinyl disc peeking out of sleeve */
+/* Small vinyl disc peeking out of sleeve (record crate) */
 .vinyl-disc {
   background:
     radial-gradient(circle at center, var(--color-panel-raised) 0%, var(--color-panel-raised) 14%, transparent 15%),
@@ -117,7 +124,13 @@ body {
   border-radius: 9999px;
 }
 
-/* Power switch */
+/* Large vinyl groove texture for the turntable */
+.vinyl-groove-large {
+  background:
+    repeating-radial-gradient(circle at center, #0d0d0d 0px, #0d0d0d 2px, #1a1a1a 3px, #0d0d0d 4px);
+  border-radius: 9999px;
+}
+
 .switch-groove {
   background: linear-gradient(180deg, #0a0a09, #1a1918);
   box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
