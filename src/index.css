@@ -135,3 +135,86 @@ body {
   background: linear-gradient(180deg, #0a0a09, #1a1918);
   box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
 }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-toast-in {
+  animation: toast-in 0.2s ease-out;
+}
+
+@keyframes boot-flicker {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  14% { opacity: 0.2; }
+  18% { opacity: 1; }
+  40% { opacity: 1; }
+  42% { opacity: 0.3; }
+  46% { opacity: 1; }
+  100% { opacity: 1; }
+}
+.animate-boot-flicker {
+  animation: boot-flicker 0.9s steps(2, end);
+}
+
+@keyframes crt-collapse {
+  0% { transform: scaleY(1); opacity: 1; }
+  55% { transform: scaleY(0.015); opacity: 1; }
+  100% { transform: scaleY(0.008); opacity: 0; }
+}
+.animate-crt-collapse {
+  animation: crt-collapse 0.35s cubic-bezier(0.5, 0, 1, 1) forwards;
+}
+
+@keyframes power-flash {
+  0% { opacity: 0.5; }
+  100% { opacity: 0; }
+}
+.animate-power-flash {
+  animation: power-flash 0.5s ease-out forwards;
+}
+
+/* Sidebar nav items as torn tape labels, not clean rounded buttons */
+.tape-label {
+  position: relative;
+  clip-path: polygon(1.5% 8%, 97% 0%, 100% 90%, 3% 100%);
+  padding: 6px 14px 6px 18px;
+}
+.tape-label::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 18%;
+  width: 40%;
+  height: 12px;
+  background: rgba(232, 228, 220, 0.12);
+  transform: rotate(-4deg);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  pointer-events: none;
+}
+
+@keyframes dust-drift {
+  0%, 100% { opacity: 0.03; transform: translate(0,0); }
+  50% { opacity: 0.06; transform: translate(-2px, 1px); }
+}
+.dust-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 49;
+  pointer-events: none;
+  animation: dust-drift 6s ease-in-out infinite;
+  background-image:
+    radial-gradient(circle at 12% 22%, rgba(255,255,255,0.6) 0px, transparent 1px),
+    radial-gradient(circle at 68% 61%, rgba(255,255,255,0.4) 0px, transparent 1px),
+    radial-gradient(circle at 34% 82%, rgba(255,255,255,0.5) 0px, transparent 1px),
+    radial-gradient(circle at 85% 15%, rgba(255,255,255,0.4) 0px, transparent 1px);
+  background-size: 300px 300px;
+}
+
+.press-active {
+  transition: transform 0.08s ease-out;
+}
+.press-active:active {
+  transform: scale(0.94);
+}

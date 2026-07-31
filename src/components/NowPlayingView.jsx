@@ -1,6 +1,6 @@
 import { Play, Pause, SkipBack, SkipForward, ChevronDown } from 'lucide-react'
 import { usePlayerStore } from '../store/usePlayerStore'
-import EqualizerBars from './EqualizerBars'
+import SpectrumVisualizer from './SpectrumVisualizer'
 
 function formatTime(seconds) {
   if (!seconds || isNaN(seconds)) return '0:00'
@@ -39,7 +39,9 @@ function NowPlayingView({ isOpen, onClose }) {
           <p className="text-taupe">{currentTrack.artist} — {currentTrack.album}</p>
         </div>
 
-        <EqualizerBars isPlaying={isPlaying} barCount={16} />
+        <div className="w-full max-w-2xl">
+          <SpectrumVisualizer isPlaying={isPlaying} />
+        </div>
 
         <div className="flex flex-col w-full max-w-lg gap-2">
           <input

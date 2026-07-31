@@ -21,6 +21,11 @@ function TrackList({ tracks, onTrackSelect, currentTrackId }) {
     e.target.value = ''
   }
 
+  function handleDragStart(e, track) {
+    e.dataTransfer.setData('application/json', JSON.stringify(track))
+    e.dataTransfer.effectAllowed = 'copy'
+  }
+
   return (
     <div className="flex flex-col">
       <div className="grid grid-cols-[24px_1fr_1fr_56px_32px_32px] gap-4 px-4 py-2 text-taupe uppercase tracking-widest border-b border-white/10 mb-2 font-lcd text-sm">
@@ -39,7 +44,9 @@ function TrackList({ tracks, onTrackSelect, currentTrackId }) {
         return (
           <div
             key={track.id}
-            className={`grid grid-cols-[24px_1fr_1fr_56px_32px_32px] gap-4 px-4 py-2 rounded-md items-center transition-colors group ${
+            draggable
+            onDragStart={(e) => handleDragStart(e, track)}
+            className={`grid grid-cols-[24px_1fr_1fr_56px_32px_32px] gap-4 px-4 py-2 rounded-md items-center transition-colors group cursor-grab active:cursor-grabbing ${
               isActive ? 'bg-panel' : 'hover:bg-white/5'
             }`}
           >
@@ -85,7 +92,7 @@ function TrackList({ tracks, onTrackSelect, currentTrackId }) {
               <Plus size={16} className="text-taupe pointer-events-none" />
             </div>
 
-            <button onClick={() => toggleLike(track.id)} className="flex items-center justify-center">
+            <button onClick={() => toggleLike(track.id)} className="press-active flex items-center justify-center">
               <Heart
                 size={16}
                 className={isLiked ? 'text-phosphor' : 'text-taupe hover:text-paper'}
