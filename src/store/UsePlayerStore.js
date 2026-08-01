@@ -1,25 +1,48 @@
 import { create } from 'zustand'
 import { useToastStore } from './useToastStore'
 
+// If sound issues ever come back, flip this to false — it guarantees
+// audio playback by fully skipping the Web Audio analysis graph (EQ bars will stay flat).
+const ENABLE_AUDIO_ANALYSIS = true
+
 const audio = typeof Audio !== 'undefined' ? new Audio() : null
-if (audio) audio.volume = 0.8
+if (audio) {
+  audio.volume = 0.8
+}
 
 let audioContext = null
 let analyser = null
 let sourceNode = null
+let gainNode = null
 let fadeInterval = null
 
 function ensureAudioGraph() {
-  if (!audio || audioContext) return
+  if (!audio || audioContext || !ENABLE_AUDIO_ANALYSIS) return
   try {
     audioContext = new (window.AudioContext || window.webkitAudioContext)()
     sourceNode = audioContext.createMediaElementSource(audio)
     analyser = audioContext.createAnalyser()
     analyser.fftSize = 64
+    gainNode = audioContext.createGain()
+    gainNode.gain.value = 1
+
     sourceNode.connect(analyser)
-    analyser.connect(audioContext.destination)
+    analyser.connect(gainNode)
+    gainNode.connect(audioContext.destination)
   } catch (e) {
-    console.warn('Web Audio analysis unavailable, EQ will stay flat:', e)
+    console.warn('Web Audio graph failed, disabling analysis (sound still plays normally):', e)
+    audioContext = null
+    analyser = null
+  }
+}
+
+async function resumeContextIfNeeded() {
+  if (audioContext && audioContext.state === 'suspended') {
+    try {
+      await audioContext.resume()
+    } catch (e) {
+      console.warn('AudioContext resume failed:', e)
+    }
   }
 }
 
@@ -60,12 +83,18 @@ export const usePlayerStore = create((set, get) => ({
 
   setLibrary: (library) => set({ library }),
 
-  playTrack: (track) => {
+  playTrack: async (track) => {
     const { currentTrack, volume } = get()
     if (!audio) return
 
+    if (!track.src) {
+      console.error('Track has no playable audio source:', track)
+      useToastStore.getState().addToast(`No audio source for "${track.title}"`)
+      return
+    }
+
     ensureAudioGraph()
-    if (audioContext && audioContext.state === 'suspended') audioContext.resume()
+    await resumeContextIfNeeded()
 
     if (currentTrack?.id === track.id) {
       get().togglePlay()
@@ -75,8 +104,14 @@ export const usePlayerStore = create((set, get) => ({
     const startPlayback = () => {
       audio.src = track.src
       audio.volume = 0
-      audio.play()
-      fade(0, volume, 250)
+      audio
+        .play()
+        .then(() => fade(0, volume, 250))
+        .catch((err) => {
+          console.error('Playback failed for track:', track.title, track.src, err)
+          useToastStore.getState().addToast(`Couldn't play "${track.title}" — see console`)
+          set({ isPlaying: false })
+        })
       set((s) => ({
         currentTrack: track,
         isPlaying: true,
@@ -93,17 +128,22 @@ export const usePlayerStore = create((set, get) => ({
     }
   },
 
-  togglePlay: () => {
+  togglePlay: async () => {
     const { currentTrack, isPlaying, volume } = get()
     if (!audio || !currentTrack) return
-    if (audioContext && audioContext.state === 'suspended') audioContext.resume()
+    await resumeContextIfNeeded()
     if (isPlaying) {
       fade(audio.volume, 0, 150, () => audio.pause())
       set({ isPlaying: false })
     } else {
       audio.volume = 0
-      audio.play()
-      fade(0, volume, 150)
+      audio
+        .play()
+        .then(() => fade(0, volume, 150))
+        .catch((err) => {
+          console.error('Resume playback failed:', err)
+          useToastStore.getState().addToast('Playback failed — see console')
+        })
       set({ isPlaying: true })
     }
   },
@@ -225,4 +265,8 @@ if (audio) {
   audio.addEventListener('timeupdate', () => usePlayerStore.setState({ currentTime: audio.currentTime }))
   audio.addEventListener('loadedmetadata', () => usePlayerStore.setState({ duration: audio.duration }))
   audio.addEventListener('ended', () => usePlayerStore.getState().next())
+  audio.addEventListener('error', () => {
+    const err = audio.error
+    console.error('Audio element error:', err?.code, err?.message, 'src:', audio.src)
+  })
 }

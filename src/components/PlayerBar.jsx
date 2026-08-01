@@ -1,8 +1,6 @@
-import { Play, Pause, SkipBack, SkipForward, Maximize2, ListMusic, Shuffle, Repeat, Repeat1 } from 'lucide-react'
+import { Play, Pause, SkipBack, SkipForward, Volume2, ListMusic, Shuffle, Repeat, Repeat1, Maximize2 } from 'lucide-react'
 import { usePlayerStore } from '../store/usePlayerStore'
-import { useDominantColor } from '../hooks/useDominantColor'
 import EqualizerBars from './EqualizerBars'
-import VolumeKnob from './VolumeKnob'
 import VUMeter from './VUMeter'
 
 function formatTime(seconds) {
@@ -30,8 +28,6 @@ function PlayerBar({ onExpand, onToggleQueue }) {
     cycleRepeat,
   } = usePlayerStore()
 
-  const glowColor = useDominantColor(currentTrack?.cover)
-
   if (!currentTrack) {
     return (
       <div className="relative h-20 metal-panel-raised border-t border-black/60 flex items-center px-5">
@@ -42,12 +38,10 @@ function PlayerBar({ onExpand, onToggleQueue }) {
 
   return (
     <div className="relative h-20 border-t border-black/60 overflow-hidden">
-      <div
-        className="absolute inset-0 opacity-40 transition-all duration-1000 pointer-events-none"
-        style={{ background: `radial-gradient(circle at 10% 50%, rgba(${glowColor},0.35), transparent 60%)` }}
-      />
+      {isPlaying && <div className="smoke-layer" />}
+
       <div className="relative metal-panel-raised h-full flex items-center gap-6 px-5">
-        <button onClick={onExpand} className="flex items-center gap-3 w-56 flex-shrink-0 text-left group press-active">
+        <button onClick={onExpand} className="press-active flex items-center gap-3 w-56 flex-shrink-0 text-left group">
           <img src={currentTrack.cover} alt="" className="w-12 h-12 rounded object-cover border border-black/40" />
           <div className="flex flex-col min-w-0">
             <span className="font-lcd text-phosphor text-lg leading-none truncate [text-shadow:0_0_6px_rgba(255,59,59,0.5)]">
@@ -100,7 +94,18 @@ function PlayerBar({ onExpand, onToggleQueue }) {
           <button onClick={onToggleQueue} className="press-active text-taupe hover:text-paper transition-colors">
             <ListMusic size={18} />
           </button>
-          <VolumeKnob value={volume} onChange={changeVolume} size={36} />
+          <div className="flex items-center gap-1.5">
+            <Volume2 size={16} className="text-taupe" />
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={volume}
+              onChange={(e) => changeVolume(Number(e.target.value))}
+              className="w-16 h-1 accent-phosphor cursor-pointer"
+            />
+          </div>
         </div>
       </div>
     </div>

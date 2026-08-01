@@ -1,4 +1,4 @@
-const CLIENT_ID = 'YOUR_CLIENT_ID_HERE' // <- paste your Jamendo client_id here
+const CLIENT_ID = '4ee48d93' // <- paste your Jamendo client_id here
 const BASE_URL = 'https://api.jamendo.com/v3.0'
 
 function mapJamendoTrack(t) {
