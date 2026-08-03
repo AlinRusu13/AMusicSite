@@ -3,7 +3,7 @@ import { useToastStore } from './useToastStore'
 
 // If sound issues ever come back, flip this to false — it guarantees
 // audio playback by fully skipping the Web Audio analysis graph (EQ bars will stay flat).
-const ENABLE_AUDIO_ANALYSIS = true
+const ENABLE_AUDIO_ANALYSIS = false
 
 const audio = typeof Audio !== 'undefined' ? new Audio() : null
 if (audio) {

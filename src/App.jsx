@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { tracks as staticTracks } from './data/tracks'
 import TrackList from './components/TrackList'
 import PlayerBar from './components/PlayerBar'
+import MasterBar from './components/MasterBar'
 import Turntable from './components/Turntable'
 import RecordCrate from './components/RecordCrate'
 import PowerSwitch from './components/PowerSwitch'
@@ -13,11 +14,18 @@ import ToastContainer from './components/ToastContainer'
 import BootSequence from './components/BootSequence'
 import MixtapeMaker from './components/MixtapeMaker'
 import MixtapeIcon from './components/MixtapeIcon'
+import DJBooth from './components/DJBooth'
+import MixHistory from './components/MixHistory'
 import { usePlayerStore } from './store/usePlayerStore'
+import { useDeckStore } from './store/useDeckStore'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useJamendoSearch } from './hooks/useJamendoSearch'
 import { useJamendoDiscover } from './hooks/useJamendoDiscover'
-import { Plus, Heart } from 'lucide-react'
+import { Plus, Heart, Disc3, Sliders } from 'lucide-react'
+import GenreChips from './components/GenreChips'
+import MadeForYou from './components/MadeForYou'
+import HomeHeader from './components/HomeHeader'
+import { useJamendoTag } from './hooks/useJamendoTag'
 
 function Bolt({ className }) {
   return <span className={`absolute w-1.5 h-1.5 rounded-full bg-black/40 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)] ${className}`} />
@@ -51,12 +59,16 @@ function App() {
 
   const [isOn, setIsOn] = useState(true)
   const [powerAnim, setPowerAnim] = useState(null)
+  const [appMode, setAppMode] = useState('listen') // 'listen' | 'mix'
 
   const [activePlaylistId, setActivePlaylistId] = useState(null)
   const [showLiked, setShowLiked] = useState(false)
   const [isQueueOpen, setIsQueueOpen] = useState(false)
   const [isNowPlayingOpen, setIsNowPlayingOpen] = useState(false)
   const [isMixtapeMakerOpen, setIsMixtapeMakerOpen] = useState(false)
+
+  const [activeGenre, setActiveGenre] = useState(null)
+  const { tracks: genreTracks, isLoading: genreLoading } = useJamendoTag(activeGenre)
 
   function togglePower() {
     if (isOn) {
@@ -68,6 +80,19 @@ function App() {
       setPowerAnim('on')
       setTimeout(() => setPowerAnim(null), 500)
     }
+  }
+
+  function switchMode(mode) {
+    if (mode === appMode) return
+    if (appMode === 'listen' && usePlayerStore.getState().isPlaying) {
+      usePlayerStore.getState().togglePlay()
+    }
+    if (appMode === 'mix') {
+      const decks = useDeckStore.getState().decks
+      if (decks.A.isPlaying) useDeckStore.getState().togglePlay('A')
+      if (decks.B.isPlaying) useDeckStore.getState().togglePlay('B')
+    }
+    setAppMode(mode)
   }
 
   function goHome() {
@@ -115,52 +140,85 @@ function App() {
 
           <PowerSwitch isOn={isOn} onToggle={togglePower} />
 
-          <div className="flex flex-col gap-2.5">
+          <div className="metal-panel-raised rounded-lg p-1 flex gap-1 border border-black/40">
             <button
-              onClick={goHome}
-              className={`tape-label -rotate-1 bg-panel-raised/60 text-left text-sm transition-colors ${
-                !showLiked && !activePlaylistId && !searchTerm ? 'text-phosphor' : 'text-taupe hover:text-paper'
+              onClick={() => switchMode('listen')}
+              className={`press-active flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-lcd tracking-widest transition-colors ${
+                appMode === 'listen' ? 'bg-phosphor text-void' : 'text-taupe hover:text-paper'
               }`}
             >
-              Home
+              <Disc3 size={13} />
+              LISTEN
             </button>
-
             <button
-              onClick={() => { setShowLiked(true); setActivePlaylistId(null); setSearchTerm('') }}
-              className={`tape-label rotate-1 bg-panel-raised/60 flex items-center gap-2 text-left text-sm transition-colors ${
-                showLiked ? 'text-phosphor' : 'text-taupe hover:text-paper'
+              onClick={() => switchMode('mix')}
+              className={`press-active flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-lcd tracking-widest transition-colors ${
+                appMode === 'mix' ? 'bg-phosphor text-void' : 'text-taupe hover:text-paper'
               }`}
             >
-              <Heart size={13} fill={showLiked ? 'currentColor' : 'none'} />
-              Liked Songs
+              <Sliders size={13} />
+              MIX
             </button>
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="font-lcd text-taupe text-sm tracking-widest">MIXTAPES</p>
-              <button onClick={() => setIsMixtapeMakerOpen(true)} className="press-active text-taupe hover:text-phosphor">
-                <Plus size={16} />
-              </button>
-            </div>
-            <div className="flex flex-col gap-2">
-              {playlists.length === 0 && <p className="text-xs text-taupe">No mixtapes yet.</p>}
-              {playlists.map((p) => (
+          {appMode === 'listen' && (
+            <>
+              <div className="flex flex-col gap-2.5">
                 <button
-                  key={p.id}
-                  onClick={() => { setActivePlaylistId(p.id); setSearchTerm(''); setShowLiked(false) }}
-                  className={`press-active flex items-center gap-2 text-left rounded-md p-1.5 transition-colors ${
-                    activePlaylistId === p.id ? 'bg-panel-raised' : 'hover:bg-white/5'
+                  onClick={goHome}
+                  className={`tape-label -rotate-1 bg-panel-raised/60 text-left text-sm transition-colors ${
+                    !showLiked && !activePlaylistId && !searchTerm ? 'text-phosphor' : 'text-taupe hover:text-paper'
                   }`}
                 >
-                  <MixtapeIcon trackCount={p.trackIds.length} size={40} />
-                  <span className={`text-sm truncate ${activePlaylistId === p.id ? 'text-phosphor' : 'text-taupe'}`}>
-                    {p.name}
-                  </span>
+                  Home
                 </button>
-              ))}
+
+                <button
+                  onClick={() => { setShowLiked(true); setActivePlaylistId(null); setSearchTerm('') }}
+                  className={`tape-label rotate-1 bg-panel-raised/60 flex items-center gap-2 text-left text-sm transition-colors ${
+                    showLiked ? 'text-phosphor' : 'text-taupe hover:text-paper'
+                  }`}
+                >
+                  <Heart size={13} fill={showLiked ? 'currentColor' : 'none'} />
+                  Liked Songs
+                </button>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="font-lcd text-taupe text-sm tracking-widest">MIXTAPES</p>
+                  <button onClick={() => setIsMixtapeMakerOpen(true)} className="press-active text-taupe hover:text-phosphor">
+                    <Plus size={16} />
+                  </button>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {playlists.length === 0 && <p className="text-xs text-taupe">No mixtapes yet.</p>}
+                  {playlists.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => { setActivePlaylistId(p.id); setSearchTerm(''); setShowLiked(false) }}
+                      className={`press-active flex items-center gap-2 text-left rounded-md p-1.5 transition-colors ${
+                        activePlaylistId === p.id ? 'bg-panel-raised' : 'hover:bg-white/5'
+                      }`}
+                    >
+                      <MixtapeIcon trackCount={p.trackIds.length} size={40} />
+                      <span className={`text-sm truncate ${activePlaylistId === p.id ? 'text-phosphor' : 'text-taupe'}`}>
+                        {p.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {appMode === 'mix' && (
+            <div className="flex-1 flex items-center justify-center">
+              <p className="font-lcd text-taupe text-sm text-center tracking-wide leading-relaxed">
+                // DRAG ANY TRACK<br />ONTO A DECK<br />TO START MIXING
+              </p>
             </div>
-          </div>
+          )}
 
           <div className="mt-auto">
             <UploadButton onFilesAdded={setUploadedTracks} />
@@ -176,109 +234,141 @@ function App() {
           {powerAnim === 'off' && <div className="absolute inset-0 z-40 bg-void origin-center animate-crt-collapse" />}
           {powerAnim === 'on' && <div className="absolute inset-0 z-40 bg-phosphor animate-power-flash pointer-events-none" />}
 
-          <SearchBar
-            value={searchTerm}
-            onChange={(v) => { setSearchTerm(v); setActivePlaylistId(null); setShowLiked(false) }}
-          />
-
-          {searchTerm ? (
+          {appMode === 'mix' ? (
             <>
-              <h3 className="font-display font-bold text-xl mb-4">Results for "{searchTerm}"</h3>
-
-              {searchError && (
-                <p className="font-lcd text-red tracking-wide mb-4">
-                  // JAMENDO SEARCH FAILED — CHECK YOUR CLIENT_ID IN jamendo.js
+              <div className="mb-6">
+                <p className="font-lcd text-phosphor text-sm tracking-[0.2em] mb-1 [text-shadow:0_0_6px_rgba(255,59,59,0.6)]">
+                  // MIX MODE
                 </p>
-              )}
-
-              {localSearchResults.length > 0 && (
-                <>
-                  <p className="text-taupe text-sm mb-2">Your library</p>
-                  <TrackList tracks={localSearchResults} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />
-                  <div className="h-6" />
-                </>
-              )}
-
-              <p className="text-taupe text-sm mb-2">
-                From Jamendo {searchLoading ? '(searching...)' : ''}
-              </p>
-              {jamendoResults.length === 0 && !searchLoading ? (
-                <p className="font-lcd text-taupe tracking-wide">// NO MATCHES FOUND</p>
-              ) : (
-                <TrackList tracks={jamendoResults} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />
-              )}
-            </>
-          ) : showLiked ? (
-            <>
-              <h3 className="font-display font-bold text-xl mb-4">Liked Songs</h3>
-              {likedSongsList.length === 0
-                ? <p className="font-lcd text-taupe tracking-wide">// NO LIKED TRACKS YET</p>
-                : <TrackList tracks={likedSongsList} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />}
-            </>
-          ) : activePlaylist ? (
-            <>
-              <div className="flex items-center gap-4 mb-4">
-                <MixtapeIcon trackCount={activePlaylist.trackIds.length} size={64} />
-                <h3 className="font-display font-bold text-xl">{activePlaylist.name}</h3>
+                <h2 className="font-display font-bold text-3xl">The Booth</h2>
               </div>
-              {activePlaylistTracks.length === 0
-                ? <p className="font-lcd text-taupe tracking-wide">// EMPTY — RECORD ONE VIA THE MIXTAPE MAKER</p>
-                : <TrackList tracks={activePlaylistTracks} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />}
+              <DJBooth />
+              <h3 className="font-display font-bold text-xl mb-4">Track Library</h3>
+              <TrackList tracks={allTracks} onTrackSelect={() => {}} currentTrackId={null} />
+              <div className="h-8" />
+              <MixHistory />
             </>
           ) : (
             <>
-              <Turntable track={currentTrack} isPlaying={isPlaying} onTogglePlay={handleTurntableToggle} />
+              <SearchBar
+                value={searchTerm}
+                onChange={(v) => { setSearchTerm(v); setActivePlaylistId(null); setShowLiked(false) }}
+              />
 
-              {recentlyPlayed.length > 0 && (
+              {searchTerm ? (
                 <>
-                  <h3 className="font-display font-bold text-xl mb-4">Recently Played</h3>
-                  <TrackList tracks={recentlyPlayed} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />
-                  <div className="h-8" />
+                  <h3 className="font-display font-bold text-xl mb-4">Results for "{searchTerm}"</h3>
+                  {searchError && (
+                    <p className="font-lcd text-red tracking-wide mb-4">
+                      // JAMENDO SEARCH FAILED — CHECK YOUR CLIENT_ID IN jamendo.js
+                    </p>
+                  )}
+                  {localSearchResults.length > 0 && (
+                    <>
+                      <p className="text-taupe text-sm mb-2">Your library</p>
+                      <TrackList tracks={localSearchResults} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />
+                      <div className="h-6" />
+                    </>
+                  )}
+                  <p className="text-taupe text-sm mb-2">From Jamendo {searchLoading ? '(searching...)' : ''}</p>
+                  {jamendoResults.length === 0 && !searchLoading ? (
+                    <p className="font-lcd text-taupe tracking-wide">// NO MATCHES FOUND</p>
+                  ) : (
+                    <TrackList tracks={jamendoResults} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />
+                  )}
                 </>
-              )}
-
-              {playlists.length > 0 && (
+              ) : showLiked ? (
                 <>
-                  <h3 className="font-display font-bold text-xl mb-4">Mixtape Shelf</h3>
-                  <div className="flex flex-wrap gap-4 mb-10">
-                    {playlists.map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => setActivePlaylistId(p.id)}
-                        className="press-active flex flex-col items-center gap-2 metal-panel rounded-lg p-3 hover:-translate-y-1 transition-transform"
-                      >
-                        <MixtapeIcon trackCount={p.trackIds.length} size={72} />
-                        <span className="text-xs text-taupe truncate max-w-[80px]">{p.name}</span>
-                      </button>
-                    ))}
+                  <h3 className="font-display font-bold text-xl mb-4">Liked Songs</h3>
+                  {likedSongsList.length === 0
+                    ? <p className="font-lcd text-taupe tracking-wide">// NO LIKED TRACKS YET</p>
+                    : <TrackList tracks={likedSongsList} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />}
+                </>
+              ) : activePlaylist ? (
+                <>
+                  <div className="flex items-center gap-4 mb-4">
+                    <MixtapeIcon trackCount={activePlaylist.trackIds.length} size={64} />
+                    <h3 className="font-display font-bold text-xl">{activePlaylist.name}</h3>
                   </div>
+                  {activePlaylistTracks.length === 0
+                    ? <p className="font-lcd text-taupe tracking-wide">// EMPTY — RECORD ONE VIA THE MIXTAPE MAKER</p>
+                    : <TrackList tracks={activePlaylistTracks} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />}
                 </>
-              )}
-
-              <h3 className="font-display font-bold text-xl mb-4">Discover — Real Tracks</h3>
-              {discoverError && (
-                <p className="font-lcd text-red tracking-wide mb-4">
-                  // COULDN'T LOAD JAMENDO — CHECK YOUR CLIENT_ID IN src/services/jamendo.js
-                </p>
-              )}
-              {discoverLoading ? (
-                <p className="font-lcd text-taupe tracking-wide mb-6">// TUNING IN...</p>
               ) : (
                 <>
-                  <RecordCrate tracks={discoverTracks} onPlay={playTrack} />
+                  <Turntable track={currentTrack} isPlaying={isPlaying} onTogglePlay={handleTurntableToggle} />
+
+                  <HomeHeader trackCount={allTracks.length} />
+
+                  <GenreChips activeGenre={activeGenre} onSelect={setActiveGenre} />
+
+                  {activeGenre ? (
+                    <div className="mb-10">
+                      <h3 className="font-display font-bold text-xl mb-4">{activeGenre} Tracks</h3>
+                      {genreLoading ? (
+                        <p className="font-lcd text-taupe tracking-wide">// TUNING IN...</p>
+                      ) : genreTracks.length === 0 ? (
+                        <p className="font-lcd text-taupe tracking-wide">// NOTHING FOUND FOR THIS GENRE YET</p>
+                      ) : (
+                        <TrackList tracks={genreTracks} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <MadeForYou allTracks={allTracks} />
+
+                      {recentlyPlayed.length > 0 && (
+                        <>
+                          <h3 className="font-display font-bold text-xl mb-4">Recently Played</h3>
+                          <TrackList tracks={recentlyPlayed} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />
+                          <div className="h-8" />
+                        </>
+                      )}
+
+                      {playlists.length > 0 && (
+                        <>
+                          <h3 className="font-display font-bold text-xl mb-4">Mixtape Shelf</h3>
+                          <div className="flex flex-wrap gap-4 mb-10">
+                            {playlists.map((p) => (
+                              <button
+                                key={p.id}
+                                onClick={() => setActivePlaylistId(p.id)}
+                                className="press-active flex flex-col items-center gap-2 metal-panel rounded-lg p-3 hover:-translate-y-1 transition-transform"
+                              >
+                                <MixtapeIcon trackCount={p.trackIds.length} size={72} />
+                                <span className="text-xs text-taupe truncate max-w-[80px]">{p.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      <h3 className="font-display font-bold text-xl mb-4">Discover — Real Tracks</h3>
+                      {discoverError && (
+                        <p className="font-lcd text-red tracking-wide mb-4">
+                          // COULDN'T LOAD JAMENDO — CHECK YOUR CLIENT_ID IN src/services/jamendo.js
+                        </p>
+                      )}
+                      {discoverLoading ? (
+                        <p className="font-lcd text-taupe tracking-wide mb-6">// TUNING IN...</p>
+                      ) : (
+                        <RecordCrate tracks={discoverTracks} onPlay={playTrack} />
+                      )}
+
+                      {uploadedTracks.length > 0 && (
+                        <>
+                          <h3 className="font-display font-bold text-xl mb-4">Your Library</h3>
+                          <TrackList tracks={uploadedTracks} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />
+                          <div className="h-8" />
+                        </>
+                      )}
+
+                      <h3 className="font-display font-bold text-xl mb-4">Demo Tracks</h3>
+                      <TrackList tracks={staticTracks} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />
+                    </>
+                  )}
                 </>
               )}
-
-              {uploadedTracks.length > 0 && (
-                <>
-                  <h3 className="font-display font-bold text-xl mb-4">Your Library</h3>
-                  <TrackList tracks={uploadedTracks} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />
-                  <div className="h-8" />
-                </>
-              )}
-
-              <h3 className="font-display font-bold text-xl mb-4">Demo Tracks</h3>
-              <TrackList tracks={staticTracks} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />
             </>
           )}
         </main>
@@ -286,7 +376,14 @@ function App() {
         <QueuePanel isOpen={isQueueOpen} onClose={() => setIsQueueOpen(false)} />
       </div>
 
-      <PlayerBar onExpand={() => setIsNowPlayingOpen(true)} onToggleQueue={() => setIsQueueOpen((v) => !v)} />
+      <div className="flex-shrink-0">
+        {appMode === 'mix' ? (
+          <MasterBar />
+        ) : (
+          <PlayerBar onExpand={() => setIsNowPlayingOpen(true)} onToggleQueue={() => setIsQueueOpen((v) => !v)} />
+        )}
+      </div>
+
       <NowPlayingView isOpen={isNowPlayingOpen} onClose={() => setIsNowPlayingOpen(false)} />
       <MixtapeMaker isOpen={isMixtapeMakerOpen} onClose={() => setIsMixtapeMakerOpen(false)} />
       <ToastContainer />

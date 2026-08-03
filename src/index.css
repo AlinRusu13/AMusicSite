@@ -252,3 +252,19 @@ body {
   animation: smoke-drift 10s ease-in-out infinite;
   mix-blend-mode: screen;
 }
+
+@keyframes ember-breathe {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.08); }
+}
+.ember-glow {
+  animation: ember-breathe 3.5s ease-in-out infinite;
+}
+
+@keyframes ember-strip {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.75; }
+}
+.ember-strip {
+  animation: ember-strip 3.5s ease-in-out infinite;
+}

@@ -1,5 +1,6 @@
 import { Plus, Heart } from 'lucide-react'
 import { usePlayerStore } from '../store/usePlayerStore'
+import { useDeckStore } from '../store/useDeckStore'
 
 function formatDuration(seconds) {
   const mins = Math.floor(seconds / 60)
@@ -14,9 +15,11 @@ function TrackList({ tracks, onTrackSelect, currentTrackId }) {
   const likedTrackIds = usePlayerStore((s) => s.likedTrackIds)
   const toggleLike = usePlayerStore((s) => s.toggleLike)
 
-  function handleMenuChange(e, track) {
+function handleMenuChange(e, track) {
     const value = e.target.value
-    if (value === 'queue') addToQueue(track)
+    if (value === 'deckA') useDeckStore.getState().loadTrack('A', track)
+    else if (value === 'deckB') useDeckStore.getState().loadTrack('B', track)
+    else if (value === 'queue') addToQueue(track)
     else if (value) addTrackToPlaylist(value, track.id)
     e.target.value = ''
   }
@@ -83,11 +86,13 @@ function TrackList({ tracks, onTrackSelect, currentTrackId }) {
                 defaultValue=""
                 className="absolute inset-0 opacity-0 cursor-pointer w-6 h-6"
               >
-                <option value="" disabled>+</option>
-                <option value="queue">Add to Queue</option>
-                {playlists.map((p) => (
-                  <option key={p.id} value={p.id}>Add to {p.name}</option>
-                ))}
+<option value="" disabled>+</option>
+<option value="deckA">Load to Deck A</option>
+<option value="deckB">Load to Deck B</option>
+<option value="queue">Add to Queue</option>
+{playlists.map((p) => (
+  <option key={p.id} value={p.id}>Add to {p.name}</option>
+))}
               </select>
               <Plus size={16} className="text-taupe pointer-events-none" />
             </div>
