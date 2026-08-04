@@ -16,16 +16,25 @@ import MixtapeMaker from './components/MixtapeMaker'
 import MixtapeIcon from './components/MixtapeIcon'
 import DJBooth from './components/DJBooth'
 import MixHistory from './components/MixHistory'
-import { usePlayerStore } from './store/usePlayerStore'
-import { useDeckStore } from './store/useDeckStore'
-import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
-import { useJamendoSearch } from './hooks/useJamendoSearch'
-import { useJamendoDiscover } from './hooks/useJamendoDiscover'
-import { Plus, Heart, Disc3, Sliders } from 'lucide-react'
 import GenreChips from './components/GenreChips'
 import MadeForYou from './components/MadeForYou'
 import HomeHeader from './components/HomeHeader'
+import SleepTimer from './components/SleepTimer'
+import AddYouTubeTrack from './components/AddYouTubeTrack'
+import YouTubePlayerMount from './components/YouTubePlayerMount'
+import AuthScreen from './components/AuthScreen'
+import { usePlayerStore } from './store/usePlayerStore'
+import { useDeckStore } from './store/useDeckStore'
+import { useAuthStore } from './store/useAuthStore'
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { useJamendoSearch } from './hooks/useJamendoSearch'
+import { useJamendoDiscover } from './hooks/useJamendoDiscover'
 import { useJamendoTag } from './hooks/useJamendoTag'
+import { useAutoSave } from './hooks/useAutoSave'
+import { loadUserData } from './services/userData'
+import { Plus, Heart, Disc3, Sliders, LogOut } from 'lucide-react'
+import ProfilePage from './components/ProfilePage'
+import { useProfileStore } from './store/useProfileStore'
 
 function Bolt({ className }) {
   return <span className={`absolute w-1.5 h-1.5 rounded-full bg-black/40 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)] ${className}`} />
@@ -33,6 +42,28 @@ function Bolt({ className }) {
 
 function App() {
   useKeyboardShortcuts()
+  useAutoSave()
+
+  const user = useAuthStore((s) => s.user)
+  const isAuthLoading = useAuthStore((s) => s.isLoading)
+  const logout = useAuthStore((s) => s.logout)
+  const initAuth = useAuthStore((s) => s.init)
+
+  useEffect(() => {
+    initAuth()
+  }, [initAuth])
+
+const loadPersistedState = usePlayerStore((s) => s.loadPersistedState)
+const loadProfile = useProfileStore((s) => s.loadProfile)
+useEffect(() => {
+  if (!user) return
+  loadUserData(user.uid).then((data) => {
+    if (data) loadPersistedState(data)
+    loadProfile(data)
+  })
+}, [user, loadPersistedState, loadProfile])
+
+  
 
   const [isBooting, setIsBooting] = useState(true)
   const [uploadedTracks, setUploadedTracks] = useState([])
@@ -42,7 +73,10 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('')
   const { results: jamendoResults, isLoading: searchLoading, error: searchError } = useJamendoSearch(searchTerm)
 
-  const allTracks = [...staticTracks, ...uploadedTracks, ...discoverTracks]
+  const youtubeTracks = usePlayerStore((s) => s.youtubeTracks)
+  const allTracks = [...staticTracks, ...uploadedTracks, ...discoverTracks, ...youtubeTracks]
+
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
 
   const setLibrary = usePlayerStore((s) => s.setLibrary)
   const playTrack = usePlayerStore((s) => s.playTrack)
@@ -55,11 +89,11 @@ function App() {
 
   useEffect(() => {
     setLibrary(allTracks)
-  }, [uploadedTracks.length, discoverTracks.length])
+  }, [uploadedTracks.length, discoverTracks.length, youtubeTracks.length])
 
   const [isOn, setIsOn] = useState(true)
   const [powerAnim, setPowerAnim] = useState(null)
-  const [appMode, setAppMode] = useState('listen') // 'listen' | 'mix'
+  const [appMode, setAppMode] = useState('listen')
 
   const [activePlaylistId, setActivePlaylistId] = useState(null)
   const [showLiked, setShowLiked] = useState(false)
@@ -116,6 +150,14 @@ function App() {
   const activePlaylistTracks = activePlaylist ? allTracks.filter((t) => activePlaylist.trackIds.includes(t.id)) : []
   const likedSongsList = allTracks.filter((t) => likedTrackIds.includes(t.id))
 
+  if (isAuthLoading) {
+    return <div className="h-screen bg-void" />
+  }
+
+  if (!user) {
+    return <AuthScreen />
+  }
+
   if (isBooting) {
     return <BootSequence onDone={() => setIsBooting(false)} />
   }
@@ -133,10 +175,26 @@ function App() {
           <Bolt className="bottom-2 left-2" />
           <Bolt className="bottom-2 right-2" />
 
-          <div className="-rotate-1">
-            <h1 className="font-display font-bold text-2xl tracking-tight">REELS</h1>
-            <p className="font-lcd text-phosphor text-lg tracking-widest [text-shadow:0_0_6px_rgba(255,59,59,0.6)]">// NOW SPINNING</p>
+          <div className="-rotate-1 flex items-start justify-between">
+            <div>
+              <h1 className="font-display font-bold text-2xl tracking-tight">REELS</h1>
+              <p className="font-lcd text-phosphor text-lg tracking-widest [text-shadow:0_0_6px_rgba(255,59,59,0.6)]">// NOW SPINNING</p>
+            </div>
           </div>
+
+<button
+  onClick={() => setIsProfileOpen(true)}
+  className="press-active flex items-center justify-between metal-panel-raised rounded-md px-3 py-2 border border-black/40 text-left"
+>
+  <span className="text-sm truncate">{user.displayName || 'You'}</span>
+  <span
+    onClick={(e) => { e.stopPropagation(); logout() }}
+    className="text-taupe hover:text-red flex-shrink-0"
+    title="Log out"
+  >
+    <LogOut size={14} />
+  </span>
+</button>
 
           <PowerSwitch isOn={isOn} onToggle={togglePower} />
 
@@ -220,7 +278,9 @@ function App() {
             </div>
           )}
 
-          <div className="mt-auto">
+          <div className="mt-auto flex flex-col gap-3">
+            <SleepTimer />
+            <AddYouTubeTrack />
             <UploadButton onFilesAdded={setUploadedTracks} />
           </div>
         </aside>
@@ -303,7 +363,7 @@ function App() {
                   <GenreChips activeGenre={activeGenre} onSelect={setActiveGenre} />
 
                   {activeGenre ? (
-                    <div className="mb-10">
+                    <div className="section-block">
                       <h3 className="font-display font-bold text-xl mb-4">{activeGenre} Tracks</h3>
                       {genreLoading ? (
                         <p className="font-lcd text-taupe tracking-wide">// TUNING IN...</p>
@@ -318,17 +378,16 @@ function App() {
                       <MadeForYou allTracks={allTracks} />
 
                       {recentlyPlayed.length > 0 && (
-                        <>
+                        <div className="section-block">
                           <h3 className="font-display font-bold text-xl mb-4">Recently Played</h3>
                           <TrackList tracks={recentlyPlayed} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />
-                          <div className="h-8" />
-                        </>
+                        </div>
                       )}
 
                       {playlists.length > 0 && (
-                        <>
+                        <div className="section-block">
                           <h3 className="font-display font-bold text-xl mb-4">Mixtape Shelf</h3>
-                          <div className="flex flex-wrap gap-4 mb-10">
+                          <div className="flex flex-wrap gap-4">
                             {playlists.map((p) => (
                               <button
                                 key={p.id}
@@ -340,31 +399,41 @@ function App() {
                               </button>
                             ))}
                           </div>
-                        </>
+                        </div>
                       )}
 
-                      <h3 className="font-display font-bold text-xl mb-4">Discover — Real Tracks</h3>
-                      {discoverError && (
-                        <p className="font-lcd text-red tracking-wide mb-4">
-                          // COULDN'T LOAD JAMENDO — CHECK YOUR CLIENT_ID IN src/services/jamendo.js
-                        </p>
-                      )}
-                      {discoverLoading ? (
-                        <p className="font-lcd text-taupe tracking-wide mb-6">// TUNING IN...</p>
-                      ) : (
-                        <RecordCrate tracks={discoverTracks} onPlay={playTrack} />
-                      )}
+                      <div className="section-block">
+                        <h3 className="font-display font-bold text-xl mb-4">Discover — Real Tracks</h3>
+                        {discoverError && (
+                          <p className="font-lcd text-red tracking-wide mb-4">
+                            // COULDN'T LOAD JAMENDO — CHECK YOUR CLIENT_ID IN src/services/jamendo.js
+                          </p>
+                        )}
+                        {discoverLoading ? (
+                          <p className="font-lcd text-taupe tracking-wide">// TUNING IN...</p>
+                        ) : (
+                          <RecordCrate tracks={discoverTracks} onPlay={playTrack} />
+                        )}
+                      </div>
 
                       {uploadedTracks.length > 0 && (
-                        <>
+                        <div className="section-block">
                           <h3 className="font-display font-bold text-xl mb-4">Your Library</h3>
                           <TrackList tracks={uploadedTracks} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />
-                          <div className="h-8" />
-                        </>
+                        </div>
                       )}
 
-                      <h3 className="font-display font-bold text-xl mb-4">Demo Tracks</h3>
-                      <TrackList tracks={staticTracks} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />
+                      {youtubeTracks.length > 0 && (
+                        <div className="section-block">
+                          <h3 className="font-display font-bold text-xl mb-4">From YouTube</h3>
+                          <TrackList tracks={youtubeTracks} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />
+                        </div>
+                      )}
+
+                      <div className="section-block">
+                        <h3 className="font-display font-bold text-xl mb-4">Demo Tracks</h3>
+                        <TrackList tracks={staticTracks} onTrackSelect={playTrack} currentTrackId={currentTrack?.id} />
+                      </div>
                     </>
                   )}
                 </>
@@ -386,6 +455,8 @@ function App() {
 
       <NowPlayingView isOpen={isNowPlayingOpen} onClose={() => setIsNowPlayingOpen(false)} />
       <MixtapeMaker isOpen={isMixtapeMakerOpen} onClose={() => setIsMixtapeMakerOpen(false)} />
+      <ProfilePage isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+      <YouTubePlayerMount />
       <ToastContainer />
     </div>
   )

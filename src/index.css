@@ -268,3 +268,9 @@ body {
 .ember-strip {
   animation: ember-strip 3.5s ease-in-out infinite;
 }
+.section-block {
+  margin-bottom: 2.5rem;
+}
+.section-block:last-child {
+  margin-bottom: 0;
+}

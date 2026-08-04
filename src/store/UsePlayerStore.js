@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { useToastStore } from './useToastStore'
+import { useYouTubeStore } from './useYouTubeStore'
 
 // If sound issues ever come back, flip this to false — it guarantees
 // audio playback by fully skipping the Web Audio analysis graph (EQ bars will stay flat).
@@ -56,14 +57,15 @@ function fade(from, to, durationMs, onDone) {
   const stepTime = durationMs / steps
   let i = 0
   fadeInterval = setInterval(() => {
-    i++
-    const t = i / steps
-    audio.volume = Math.max(0, Math.min(1, from + (to - from) * t))
-    if (i >= steps) {
-      clearInterval(fadeInterval)
-      if (onDone) onDone()
-    }
-  }, stepTime)
+  const { currentTrack, isPlaying } = usePlayerStore.getState()
+  if (currentTrack?.isYouTube && isPlaying) {
+    const yt = useYouTubeStore.getState()
+    usePlayerStore.setState({
+      currentTime: yt.getCurrentTime(),
+      duration: yt.getDuration(),
+    })
+  }
+}, 500)
 }
 
 export const usePlayerStore = create((set, get) => ({
@@ -79,14 +81,44 @@ export const usePlayerStore = create((set, get) => ({
   shuffle: false,
   repeatMode: 'off',
   recentlyPlayed: [],
+  youtubeTracks: [],
   playCounts: {},
 
   setLibrary: (library) => set({ library }),
 
   playTrack: async (track) => {
     const { currentTrack, volume } = get()
-    if (!audio) return
 
+    if (currentTrack?.id === track.id) {
+      get().togglePlay()
+      return
+    }
+
+    // Stop whichever engine was previously active
+    if (currentTrack?.isYouTube) {
+      useYouTubeStore.getState().pause()
+    } else if (audio) {
+      audio.pause()
+    }
+
+    if (track.isYouTube) {
+      if (!track.youtubeId) {
+        console.error('YouTube track missing video ID:', track)
+        return
+      }
+      useYouTubeStore.getState().loadAndPlay(track.youtubeId)
+      set((s) => ({
+        currentTrack: track,
+        isPlaying: true,
+        currentTime: 0,
+        duration: 0,
+        recentlyPlayed: [track, ...s.recentlyPlayed.filter((t) => t.id !== track.id)].slice(0, 12),
+        playCounts: { ...s.playCounts, [track.id]: (s.playCounts[track.id] || 0) + 1 },
+      }))
+      return
+    }
+
+    if (!audio) return
     if (!track.src) {
       console.error('Track has no playable audio source:', track)
       useToastStore.getState().addToast(`No audio source for "${track.title}"`)
@@ -96,59 +128,61 @@ export const usePlayerStore = create((set, get) => ({
     ensureAudioGraph()
     await resumeContextIfNeeded()
 
-    if (currentTrack?.id === track.id) {
-      get().togglePlay()
+    audio.src = track.src
+    audio.volume = volume
+    audio.play().catch((err) => {
+      console.error('Playback failed for track:', track.title, track.src, err)
+      useToastStore.getState().addToast(`Couldn't play "${track.title}" — see console`)
+      set({ isPlaying: false })
+    })
+    set((s) => ({
+      currentTrack: track,
+      isPlaying: true,
+      currentTime: 0,
+      recentlyPlayed: [track, ...s.recentlyPlayed.filter((t) => t.id !== track.id)].slice(0, 12),
+      playCounts: { ...s.playCounts, [track.id]: (s.playCounts[track.id] || 0) + 1 },
+    }))
+  },
+
+togglePlay: async () => {
+    const { currentTrack, isPlaying } = get()
+    if (!currentTrack) return
+
+    if (currentTrack.isYouTube) {
+      if (isPlaying) useYouTubeStore.getState().pause()
+      else useYouTubeStore.getState().play()
+      set({ isPlaying: !isPlaying })
       return
     }
 
-    const startPlayback = () => {
-      audio.src = track.src
-      audio.volume = 0
-      audio
-        .play()
-        .then(() => fade(0, volume, 250))
-        .catch((err) => {
-          console.error('Playback failed for track:', track.title, track.src, err)
-          useToastStore.getState().addToast(`Couldn't play "${track.title}" — see console`)
-          set({ isPlaying: false })
-        })
-      set((s) => ({
-        currentTrack: track,
-        isPlaying: true,
-        currentTime: 0,
-        recentlyPlayed: [track, ...s.recentlyPlayed.filter((t) => t.id !== track.id)].slice(0, 12),
-        playCounts: { ...s.playCounts, [track.id]: (s.playCounts[track.id] || 0) + 1 },
-      }))
-    }
-
-    if (currentTrack && !audio.paused) {
-      fade(audio.volume, 0, 200, startPlayback)
-    } else {
-      startPlayback()
-    }
-  },
-
-  togglePlay: async () => {
-    const { currentTrack, isPlaying, volume } = get()
-    if (!audio || !currentTrack) return
+    if (!audio) return
     await resumeContextIfNeeded()
     if (isPlaying) {
-      fade(audio.volume, 0, 150, () => audio.pause())
+      audio.pause()
       set({ isPlaying: false })
     } else {
-      audio.volume = 0
-      audio
-        .play()
-        .then(() => fade(0, volume, 150))
-        .catch((err) => {
-          console.error('Resume playback failed:', err)
-          useToastStore.getState().addToast('Playback failed — see console')
-        })
+      audio.play().catch((err) => console.error('Resume playback failed:', err))
       set({ isPlaying: true })
     }
   },
 
+  addYoutubeTrack: (track) => set((s) => ({ youtubeTracks: [...s.youtubeTracks, track] })),
+
+  loadPersistedState: (data) =>
+    set({
+      playlists: data.playlists || [],
+      likedTrackIds: data.likedTrackIds || [],
+      playCounts: data.playCounts || {},
+      youtubeTracks: data.youtubeTracks || [],
+    }),
+
   seek: (time) => {
+    const { currentTrack } = get()
+    if (currentTrack?.isYouTube) {
+      useYouTubeStore.getState().seekTo(time)
+      set({ currentTime: time })
+      return
+    }
     if (!audio) return
     audio.currentTime = time
     set({ currentTime: time })
