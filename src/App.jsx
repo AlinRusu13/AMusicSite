@@ -23,18 +23,18 @@ import SleepTimer from './components/SleepTimer'
 import AddYouTubeTrack from './components/AddYouTubeTrack'
 import YouTubePlayerMount from './components/YouTubePlayerMount'
 import AuthScreen from './components/AuthScreen'
+import ProfilePage from './components/ProfilePage'
 import { usePlayerStore } from './store/usePlayerStore'
 import { useDeckStore } from './store/useDeckStore'
 import { useAuthStore } from './store/useAuthStore'
+import { useProfileStore } from './store/useProfileStore'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useJamendoSearch } from './hooks/useJamendoSearch'
 import { useJamendoDiscover } from './hooks/useJamendoDiscover'
 import { useJamendoTag } from './hooks/useJamendoTag'
 import { useAutoSave } from './hooks/useAutoSave'
 import { loadUserData } from './services/userData'
-import { Plus, Heart, Disc3, Sliders, LogOut } from 'lucide-react'
-import ProfilePage from './components/ProfilePage'
-import { useProfileStore } from './store/useProfileStore'
+import { Plus, Heart, Disc3, Sliders, LogOut, Menu, X } from 'lucide-react'
 
 function Bolt({ className }) {
   return <span className={`absolute w-1.5 h-1.5 rounded-full bg-black/40 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)] ${className}`} />
@@ -53,20 +53,19 @@ function App() {
     initAuth()
   }, [initAuth])
 
-const loadPersistedState = usePlayerStore((s) => s.loadPersistedState)
-const loadProfile = useProfileStore((s) => s.loadProfile)
-useEffect(() => {
-  if (!user) return
-  loadUserData(user.uid).then((data) => {
-    if (data) loadPersistedState(data)
-    loadProfile(data)
-  })
-}, [user, loadPersistedState, loadProfile])
-
-  
+  const loadPersistedState = usePlayerStore((s) => s.loadPersistedState)
+  const loadProfile = useProfileStore((s) => s.loadProfile)
+  useEffect(() => {
+    if (!user) return
+    loadUserData(user.uid).then((data) => {
+      if (data) loadPersistedState(data)
+      loadProfile(data)
+    })
+  }, [user, loadPersistedState, loadProfile])
 
   const [isBooting, setIsBooting] = useState(true)
   const [uploadedTracks, setUploadedTracks] = useState([])
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   const { tracks: discoverTracks, isLoading: discoverLoading, error: discoverError } = useJamendoDiscover()
 
@@ -127,12 +126,14 @@ useEffect(() => {
       if (decks.B.isPlaying) useDeckStore.getState().togglePlay('B')
     }
     setAppMode(mode)
+    setIsSidebarOpen(false)
   }
 
   function goHome() {
     setShowLiked(false)
     setActivePlaylistId(null)
     setSearchTerm('')
+    setIsSidebarOpen(false)
   }
 
   function handleTurntableToggle() {
@@ -169,7 +170,32 @@ useEffect(() => {
       <div className="dust-overlay" />
 
       <div className="flex flex-1 overflow-hidden relative">
-        <aside className="relative w-64 metal-panel flex flex-col p-5 gap-6 border-r border-black/50 overflow-y-auto">
+        <button
+          onClick={() => setIsSidebarOpen(true)}
+          className="md:hidden fixed top-4 left-4 z-30 w-10 h-10 rounded-full metal-panel-raised border border-black/40 flex items-center justify-center"
+        >
+          <Menu size={18} />
+        </button>
+
+        {isSidebarOpen && (
+          <div
+            onClick={() => setIsSidebarOpen(false)}
+            className="md:hidden fixed inset-0 bg-void/80 z-30"
+          />
+        )}
+
+        <aside
+          className={`fixed md:relative inset-y-0 left-0 z-40 w-64 metal-panel flex flex-col p-5 gap-6 border-r border-black/50 overflow-y-auto transition-transform duration-300 ${
+            isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+          }`}
+        >
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="md:hidden self-end text-taupe hover:text-paper"
+          >
+            <X size={20} />
+          </button>
+
           <Bolt className="top-2 left-2" />
           <Bolt className="top-2 right-2" />
           <Bolt className="bottom-2 left-2" />
@@ -182,19 +208,19 @@ useEffect(() => {
             </div>
           </div>
 
-<button
-  onClick={() => setIsProfileOpen(true)}
-  className="press-active flex items-center justify-between metal-panel-raised rounded-md px-3 py-2 border border-black/40 text-left"
->
-  <span className="text-sm truncate">{user.displayName || 'You'}</span>
-  <span
-    onClick={(e) => { e.stopPropagation(); logout() }}
-    className="text-taupe hover:text-red flex-shrink-0"
-    title="Log out"
-  >
-    <LogOut size={14} />
-  </span>
-</button>
+          <button
+            onClick={() => { setIsProfileOpen(true); setIsSidebarOpen(false) }}
+            className="press-active flex items-center justify-between metal-panel-raised rounded-md px-3 py-2 border border-black/40 text-left"
+          >
+            <span className="text-sm truncate">{user.displayName || 'You'}</span>
+            <span
+              onClick={(e) => { e.stopPropagation(); logout() }}
+              className="text-taupe hover:text-red flex-shrink-0"
+              title="Log out"
+            >
+              <LogOut size={14} />
+            </span>
+          </button>
 
           <PowerSwitch isOn={isOn} onToggle={togglePower} />
 
@@ -232,7 +258,7 @@ useEffect(() => {
                 </button>
 
                 <button
-                  onClick={() => { setShowLiked(true); setActivePlaylistId(null); setSearchTerm('') }}
+                  onClick={() => { setShowLiked(true); setActivePlaylistId(null); setSearchTerm(''); setIsSidebarOpen(false) }}
                   className={`tape-label rotate-1 bg-panel-raised/60 flex items-center gap-2 text-left text-sm transition-colors ${
                     showLiked ? 'text-phosphor' : 'text-taupe hover:text-paper'
                   }`}
@@ -254,7 +280,7 @@ useEffect(() => {
                   {playlists.map((p) => (
                     <button
                       key={p.id}
-                      onClick={() => { setActivePlaylistId(p.id); setSearchTerm(''); setShowLiked(false) }}
+                      onClick={() => { setActivePlaylistId(p.id); setSearchTerm(''); setShowLiked(false); setIsSidebarOpen(false) }}
                       className={`press-active flex items-center gap-2 text-left rounded-md p-1.5 transition-colors ${
                         activePlaylistId === p.id ? 'bg-panel-raised' : 'hover:bg-white/5'
                       }`}
@@ -285,7 +311,7 @@ useEffect(() => {
           </div>
         </aside>
 
-        <main className="flex-1 overflow-y-auto p-8 relative">
+        <main className="flex-1 overflow-y-auto p-4 pt-16 md:p-8 relative">
           {!isOn && (
             <div className="absolute inset-0 z-40 bg-void flex items-center justify-center">
               <p className="font-lcd text-taupe text-2xl tracking-[0.3em] opacity-40">// POWER OFF</p>

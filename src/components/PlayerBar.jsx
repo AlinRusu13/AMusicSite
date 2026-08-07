@@ -46,7 +46,6 @@ function PlayerBar({ onExpand, onToggleQueue }) {
 
   return (
     <div className="relative h-20 overflow-hidden">
-      {/* Single slow-breathing red ember glow, no rainbow */}
       {isPlaying && (
         <div
           className="ember-glow absolute -top-14 left-1/2 -translate-x-1/2 w-72 h-32 rounded-full blur-3xl pointer-events-none"
@@ -54,13 +53,12 @@ function PlayerBar({ onExpand, onToggleQueue }) {
         />
       )}
 
-      {/* Thin red ember line along the top edge, one color, slow breathing */}
       <div
         className={`absolute top-0 left-0 right-0 h-[2px] bg-phosphor z-10 ${isPlaying ? 'ember-strip' : ''}`}
         style={{ opacity: isPlaying ? undefined : 0.15, boxShadow: isPlaying ? '0 0 8px rgba(255,59,59,0.7)' : 'none' }}
       />
 
-      <div className="relative metal-panel-raised h-full grid grid-cols-[280px_1fr_220px] items-center gap-5 px-5 border-t border-black/60">
+      <div className="relative metal-panel-raised h-full grid grid-cols-[1fr_auto] md:grid-cols-[280px_1fr_220px] items-center gap-3 md:gap-5 px-3 md:px-5 border-t border-black/60">
         {/* LEFT: track identity */}
         <button onClick={onExpand} className="press-active flex items-center gap-3 min-w-0 text-left group">
           <div className="relative flex-shrink-0">
@@ -83,12 +81,12 @@ function PlayerBar({ onExpand, onToggleQueue }) {
           </div>
           <Maximize2
             size={13}
-            className="text-taupe opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-1"
+            className="hidden md:block text-taupe opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-1"
           />
         </button>
 
-        {/* CENTER: transport + seek */}
-        <div className="flex flex-col items-center gap-1 min-w-0">
+        {/* CENTER: transport + seek — desktop only */}
+        <div className="hidden md:flex flex-col items-center gap-1 min-w-0">
           <div className="flex items-center gap-4">
             <button onClick={toggleShuffle} className={`press-active ${shuffle ? 'text-phosphor' : 'text-taupe hover:text-paper'}`}>
               <Shuffle size={15} />
@@ -130,30 +128,39 @@ function PlayerBar({ onExpand, onToggleQueue }) {
           </div>
         </div>
 
-        {/* RIGHT: single meter + queue + fixed volume slider */}
+        {/* RIGHT: mobile play button + desktop meters/queue/volume */}
         <div className="flex items-center justify-end gap-3 min-w-0">
-          <EqualizerBars isPlaying={isPlaying} barCount={7} />
-
-          <button onClick={onToggleQueue} className="press-active text-taupe hover:text-paper transition-colors flex-shrink-0">
-            <ListMusic size={17} />
+          <button
+            onClick={togglePlay}
+            className="md:hidden press-active w-9 h-9 rounded-full bg-phosphor text-void flex items-center justify-center flex-shrink-0"
+          >
+            {isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" className="ml-0.5" />}
           </button>
 
-          <div className="flex items-center gap-1.5 flex-shrink-0 w-24">
-            <VolumeIcon volume={volume} />
-            <div className="relative flex-1 h-1.5 rounded-full bg-black/40 overflow-hidden">
-              <div
-                className="absolute inset-y-0 left-0 bg-phosphor rounded-full transition-[width]"
-                style={{ width: `${volumePct}%` }}
-              />
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={volume}
-                onChange={(e) => changeVolume(Number(e.target.value))}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              />
+          <div className="hidden md:flex items-center gap-3">
+            <EqualizerBars isPlaying={isPlaying} barCount={7} />
+
+            <button onClick={onToggleQueue} className="press-active text-taupe hover:text-paper transition-colors flex-shrink-0">
+              <ListMusic size={17} />
+            </button>
+
+            <div className="flex items-center gap-1.5 flex-shrink-0 w-24">
+              <VolumeIcon volume={volume} />
+              <div className="relative flex-1 h-1.5 rounded-full bg-black/40 overflow-hidden">
+                <div
+                  className="absolute inset-y-0 left-0 bg-phosphor rounded-full transition-[width]"
+                  style={{ width: `${volumePct}%` }}
+                />
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={volume}
+                  onChange={(e) => changeVolume(Number(e.target.value))}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+              </div>
             </div>
           </div>
         </div>

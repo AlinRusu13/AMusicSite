@@ -274,3 +274,26 @@ body {
 .section-block:last-child {
   margin-bottom: 0;
 }
+@keyframes float-bar {
+  0%, 100% { height: 20%; opacity: 0.15; }
+  50% { height: 70%; opacity: 0.35; }
+}
+.float-bar {
+  animation: float-bar ease-in-out infinite;
+}
+
+@keyframes slow-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.slow-rotate {
+  animation: slow-rotate 30s linear infinite;
+}
+
+@keyframes card-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.card-rise {
+  animation: card-rise 0.5s ease-out;
+}

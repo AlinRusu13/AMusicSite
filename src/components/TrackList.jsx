@@ -1,6 +1,5 @@
 import { Plus, Heart } from 'lucide-react'
 import { usePlayerStore } from '../store/usePlayerStore'
-import { useDeckStore } from '../store/useDeckStore'
 
 function formatDuration(seconds) {
   const mins = Math.floor(seconds / 60)
@@ -15,11 +14,9 @@ function TrackList({ tracks, onTrackSelect, currentTrackId }) {
   const likedTrackIds = usePlayerStore((s) => s.likedTrackIds)
   const toggleLike = usePlayerStore((s) => s.toggleLike)
 
-function handleMenuChange(e, track) {
+  function handleMenuChange(e, track) {
     const value = e.target.value
-    if (value === 'deckA') useDeckStore.getState().loadTrack('A', track)
-    else if (value === 'deckB') useDeckStore.getState().loadTrack('B', track)
-    else if (value === 'queue') addToQueue(track)
+    if (value === 'queue') addToQueue(track)
     else if (value) addTrackToPlaylist(value, track.id)
     e.target.value = ''
   }
@@ -31,13 +28,13 @@ function handleMenuChange(e, track) {
 
   return (
     <div className="flex flex-col">
-      <div className="grid grid-cols-[24px_1fr_1fr_56px_32px_32px] gap-4 px-4 py-2 text-taupe uppercase tracking-widest border-b border-white/10 mb-2 font-lcd text-sm">
+      <div className="grid grid-cols-[20px_1fr_44px_28px_28px] md:grid-cols-[24px_1fr_1fr_56px_32px_32px] gap-2 md:gap-4 px-2 md:px-4 py-2 text-taupe uppercase tracking-widest border-b border-white/10 mb-2 font-lcd text-sm">
         <span>#</span>
         <span>Title</span>
-        <span>Album</span>
+        <span className="hidden md:inline">Album</span>
         <span className="text-right">Time</span>
         <span></span>
-        <span></span>
+        <span className="hidden md:inline"></span>
       </div>
 
       {tracks.map((track, index) => {
@@ -49,7 +46,7 @@ function handleMenuChange(e, track) {
             key={track.id}
             draggable
             onDragStart={(e) => handleDragStart(e, track)}
-            className={`grid grid-cols-[24px_1fr_1fr_56px_32px_32px] gap-4 px-4 py-2 rounded-md items-center transition-colors group cursor-grab active:cursor-grabbing ${
+            className={`grid grid-cols-[20px_1fr_44px_28px_28px] md:grid-cols-[24px_1fr_1fr_56px_32px_32px] gap-2 md:gap-4 px-2 md:px-4 py-2 rounded-md items-center transition-colors group cursor-grab active:cursor-grabbing ${
               isActive ? 'bg-panel' : 'hover:bg-white/5'
             }`}
           >
@@ -76,28 +73,26 @@ function handleMenuChange(e, track) {
                 </span>
               </span>
 
-              <span className="text-sm text-taupe truncate self-center">{track.album}</span>
+              <span className="hidden md:block text-sm text-taupe truncate self-center">{track.album}</span>
               <span className="text-sm text-taupe text-right">{formatDuration(track.duration)}</span>
             </button>
 
-            <div className="relative opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <div className="relative opacity-0 group-hover:opacity-100 md:opacity-0 transition-opacity flex items-center justify-center">
               <select
                 onChange={(e) => handleMenuChange(e, track)}
                 defaultValue=""
                 className="absolute inset-0 opacity-0 cursor-pointer w-6 h-6"
               >
-<option value="" disabled>+</option>
-<option value="deckA">Load to Deck A</option>
-<option value="deckB">Load to Deck B</option>
-<option value="queue">Add to Queue</option>
-{playlists.map((p) => (
-  <option key={p.id} value={p.id}>Add to {p.name}</option>
-))}
+                <option value="" disabled>+</option>
+                <option value="queue">Add to Queue</option>
+                {playlists.map((p) => (
+                  <option key={p.id} value={p.id}>Add to {p.name}</option>
+                ))}
               </select>
               <Plus size={16} className="text-taupe pointer-events-none" />
             </div>
 
-            <button onClick={() => toggleLike(track.id)} className="press-active flex items-center justify-center">
+            <button onClick={() => toggleLike(track.id)} className="press-active hidden md:flex items-center justify-center">
               <Heart
                 size={16}
                 className={isLiked ? 'text-phosphor' : 'text-taupe hover:text-paper'}
