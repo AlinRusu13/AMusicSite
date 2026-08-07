@@ -39,11 +39,15 @@ export const useProfileStore = create((set, get) => ({
       return { showcaseMixtapeIds: [...s.showcaseMixtapeIds, mixtapeId] }
     }),
 
-  saveProfile: async () => {
+saveProfile: async () => {
     const user = useAuthStore.getState().user
     if (!user) return
     const { bio, bannerId, avatarColor, avatarEmoji, showcaseMixtapeIds } = get()
-    await saveUserData(user.uid, { bio, bannerId, avatarColor, avatarEmoji, showcaseMixtapeIds })
-    useToastStore.getState().addToast('Profile saved')
+    try {
+      await saveUserData(user.uid, { bio, bannerId, avatarColor, avatarEmoji, showcaseMixtapeIds })
+      useToastStore.getState().addToast('Profile saved')
+    } catch (err) {
+      useToastStore.getState().addToast('Save failed — see console')
+    }
   },
 }))
